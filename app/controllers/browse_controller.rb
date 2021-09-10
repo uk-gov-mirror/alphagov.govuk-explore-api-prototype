@@ -35,6 +35,46 @@ class BrowseController < ApplicationController
     render json: payload
   end
 
+  def show_generic_content
+    url = "https://www.gov.uk/api/content/#{params[:slug]}"
+    content_item = http_get(url).parsed_response
+    details = content_item["details"]["body"]
+    priority_taxons = [
+      "634fd193-8039-4a70-a059-919c34ff4bfc",
+      "614b2e65-56ac-4f8d-bb9c-d1a14167ba25",
+      "d6c2de5d-ef90-45d1-82d4-5f2438369eea",
+      "272308f4-05c8-4d0d-abc7-b7c2e3ccd249",
+      "b7f57213-4b16-446d-8ded-81955d782680",
+      "65666cdf-b177-4d79-9687-b9c32805e450",
+    ]
+    part_of_taxons = content_item["links"]["taxons"].select do |taxon|
+      priority_taxons.include?(taxon["content_id"])
+    end
+
+    payload = {
+      title: content_item["title"],
+      contents_list: contents_list_from_headings_with_ids(details),
+      details: details,
+      documents: content_item.dig("details", "documents"),
+      breadcrumbs: breadcrumb_content(content_item.dig("links", "parent", 0)) || content_item.dig("links", "topics"),
+      part_of_taxon: part_of_taxons[0],
+      description: content_item["description"],
+      metadata: {
+        from: content_item.dig("links", "organisations"),
+        first_published: display_date(content_item["details"]["first_public_at"] || content_item["first_published_at"]),
+        last_updated: any_updates?(content_item) && display_date(content_item["public_updated_at"]),
+      },
+      history: history(content_item),
+      topic: content_item.dig("links", "topics", 0),
+      part_of: content_item.dig("links", "part_of_step_navs"),
+      related_content: content_item.dig("links", "ordered_related_items") || content_item.dig("links", "suggested_ordered_related_items"),
+      detailed_guidance: content_item.dig("links", "related_guides"),
+      collections: content_item.dig("links", "document_collections"),
+    }
+
+    render json: payload
+  end
+
 private
 
   def topic(topic_slug, topic_type)
@@ -359,5 +399,55 @@ private
 
   def http_get(url)
     HTTParty.get(url, follow_redirects: true)
+  end
+
+  def breadcrumb_content(child)
+    return false if !child
+
+    breadcrumbs = [child]
+    potential_parent = child.dig("links", "parent", 0)
+
+    if potential_parent
+      (breadcrumbs << breadcrumb_content(potential_parent)).flatten!
+    else
+      breadcrumbs
+    end
+  end
+
+  def display_date(timestamp)
+    I18n.l(Time.zone.parse(timestamp), format: "%-d %B %Y", locale: "en")
+  end
+
+  def any_updates?(content_item)
+    if content_item["public_updated_at"] && content_item["first_published_at"]
+      Time.zone.parse(content_item["public_updated_at"]) != Time.zone.parse(content_item["first_published_at"])
+    else
+      false
+    end
+  end
+
+  def contents_list_from_headings_with_ids(content)
+    headings = Nokogiri::HTML(content).css("h2").map do |heading|
+      id = heading.attribute("id")
+      { text: heading.text.gsub(/:$/, ""), id: id.value } if id
+    end
+    headings.compact
+  end
+
+  def history(content_item)
+    return [] unless any_updates?(content_item)
+
+    change_history(content_item).sort_by {|item| Time.zone.parse(item[:timestamp])}.reverse
+  end
+
+  def change_history(content_item)
+    changes = content_item["details"]["change_history"] || []
+    changes.map do |item|
+      {
+        display_time: display_date(item["public_timestamp"]),
+        note: item["note"],
+        timestamp: item["public_timestamp"],
+      }
+    end
   end
 end
