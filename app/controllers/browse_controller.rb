@@ -38,7 +38,7 @@ class BrowseController < ApplicationController
   def show_generic_content
     url = "https://www.gov.uk/api/content/#{params[:slug]}"
     content_item = http_get(url).parsed_response
-    details = content_item["details"]["body"]
+    details = content_item.dig("details", "body") || content_item.dig("details", "parts")
     priority_taxons = [
       "634fd193-8039-4a70-a059-919c34ff4bfc",
       "614b2e65-56ac-4f8d-bb9c-d1a14167ba25",
@@ -427,11 +427,20 @@ private
   end
 
   def contents_list_from_headings_with_ids(content)
-    headings = Nokogiri::HTML(content).css("h2").map do |heading|
-      id = heading.attribute("id")
-      { text: heading.text.gsub(/:$/, ""), id: id.value } if id
+    if (content.kind_of?(Array))
+      content.map do |part|
+        {
+          text: part["title"],
+          id: part["slug"],
+        }
+      end
+    else
+      headings = Nokogiri::HTML(content).css("h2").map do |heading|
+        id = heading.attribute("id")
+        { text: heading.text.gsub(/:$/, ""), id: id.value } if id
+      end
+      headings.compact
     end
-    headings.compact
   end
 
   def history(content_item)
