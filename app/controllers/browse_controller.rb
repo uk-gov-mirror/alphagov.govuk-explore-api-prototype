@@ -47,17 +47,19 @@ class BrowseController < ApplicationController
       "b7f57213-4b16-446d-8ded-81955d782680",
       "65666cdf-b177-4d79-9687-b9c32805e450",
     ]
-    part_of_taxons = content_item["links"]["taxons"].select do |taxon|
+    taxons = content_item.dig("links", "taxons")
+    part_of_taxons = taxons && taxons.select do |taxon|
       priority_taxons.include?(taxon["content_id"])
     end
+    is_html_pub = params[:htmlpub] == "true"
 
     payload = {
       title: content_item["title"],
       contents_list: contents_list_from_headings_with_ids(details),
       details: details,
       documents: content_item.dig("details", "documents"),
-      breadcrumbs: breadcrumb_content(content_item.dig("links", "parent", 0)) || content_item.dig("links", "topics"),
-      part_of_taxon: part_of_taxons[0],
+      breadcrumbs: breadcrumb_content(content_item, is_html_pub).reverse,
+      part_of_taxon: part_of_taxons && part_of_taxons[0],
       context: context_phrases[content_item["document_type"]],
       description: content_item["description"],
       metadata: {
@@ -72,6 +74,11 @@ class BrowseController < ApplicationController
       detailed_guidance: content_item.dig("links", "related_guides"),
       collections: content_item.dig("links", "document_collections"),
     }
+
+    if is_html_pub
+      payload[:part_of_parent] = content_item.dig("links", "parent", 0)
+      payload[:context] = context_phrases[payload[:part_of_parent]["document_type"]]
+    end
 
     render json: payload
   end
@@ -402,14 +409,42 @@ private
     HTTParty.get(url, follow_redirects: true)
   end
 
-  def breadcrumb_content(child)
-    return false if !child
+  def breadcrumb_content(content_item, is_html_pub = false)
+    return false if !content_item
 
-    breadcrumbs = [child]
-    potential_parent = child.dig("links", "parent", 0)
+    if is_html_pub
+      breadcrumbs = []
+      parent_content_item = http_get("https://www.gov.uk#{content_item.dig("links", "parent", 0, "api_path")}").parsed_response
+
+      breadcrumb_content(parent_content_item)
+    else
+      if content_item.dig("links", "parent")
+        breadcrumbs_by_parent(content_item.dig("links", "parent", 0))
+      elsif content_item.dig("links", "topics")
+        content_item.dig("links", "topics")
+      elsif content_item.dig("links", "taxons")
+        breadcrumbs_by_taxon(content_item.dig("links", "taxons", 0))
+      end
+    end
+  end
+
+  def breadcrumbs_by_parent(parent)
+    breadcrumbs = [parent]
+    potential_parent = parent.dig("links", "parent", 0)
 
     if potential_parent
-      (breadcrumbs << breadcrumb_content(potential_parent)).flatten!
+      (breadcrumbs << breadcrumbs_by_parent(potential_parent)).flatten!
+    else
+      breadcrumbs
+    end
+  end
+
+  def breadcrumbs_by_taxon(taxon)
+    breadcrumbs = [taxon]
+    potential_parent_taxon = taxon.dig("links", "parent_taxons", 0)
+
+    if potential_parent_taxon
+      (breadcrumbs << breadcrumbs_by_taxon(potential_parent_taxon)).flatten!
     else
       breadcrumbs
     end
