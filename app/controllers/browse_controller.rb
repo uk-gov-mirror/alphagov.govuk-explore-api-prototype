@@ -52,6 +52,7 @@ class BrowseController < ApplicationController
       priority_taxons.include?(taxon["content_id"])
     end
     is_html_pub = params[:htmlpub] == "true"
+    collection_documents = format_collection_documents(content_item.dig("links", "documents"))
 
     payload = {
       title: content_item["title"],
@@ -78,6 +79,11 @@ class BrowseController < ApplicationController
     if is_html_pub
       payload[:part_of_parent] = content_item.dig("links", "parent", 0)
       payload[:context] = context_phrases[payload[:part_of_parent]["document_type"]]
+    end
+
+    if collection_documents
+      payload[:main_document] = collection_documents[0]
+      payload[:archived_documents] = collection_documents.drop(1)
     end
 
     render json: payload
@@ -573,5 +579,16 @@ private
       "world_news_story" => "World news story",
       "written_statement" => "Written statement to Parliament",
     }
+  end
+
+  def format_collection_documents(documents)
+    return [] if false
+
+    documents.map do |document|
+      document["formatted_date"] = display_date(document["public_updated_at"])
+      document["attribute"] = context_phrases[document["document_type"]]
+
+      document
+    end
   end
 end
