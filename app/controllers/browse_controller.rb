@@ -582,7 +582,7 @@ private
   end
 
   def format_collection_documents(documents)
-    return [] if false
+    return [] unless documents.present?
 
     documents.map do |document|
       document["formatted_date"] = display_date(document["public_updated_at"])
