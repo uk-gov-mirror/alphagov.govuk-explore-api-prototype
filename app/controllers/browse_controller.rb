@@ -52,13 +52,16 @@ class BrowseController < ApplicationController
       priority_taxons.include?(taxon["content_id"])
     end
     is_html_pub = params[:htmlpub] == "true"
-    collection_documents = format_collection_documents(content_item.dig("links", "documents"))
+    collection_documents = content_item["document_type"] == "document_collection" && format_collection_documents(content_item.dig("links", "documents"))
 
     payload = {
       title: content_item["title"],
       contents_list: contents_list_from_headings_with_ids(details),
+      intro: content_item.dig("details", "introduction"),
       details: details,
       documents: content_item.dig("details", "documents"),
+      show_form: content_item["schema_name"] == "local_transaction",
+      need_to_know: content_item.dig("details", "need_to_know"),
       breadcrumbs: breadcrumb_content(content_item, is_html_pub).reverse,
       part_of_taxon: part_of_taxons && part_of_taxons[0],
       context: context_phrases[content_item["document_type"]],
