@@ -38,7 +38,7 @@ class BrowseController < ApplicationController
   def show_generic_content
     url = "https://www.gov.uk/api/content/#{params[:slug]}"
     content_item = http_get(url).parsed_response
-    details = content_item.dig("details", "body") || content_item.dig("details", "parts")
+    details = content_item.dig("details", "body") || format_parts(content_item.dig("details", "parts"), params[:slug])
     priority_taxons = [
       "634fd193-8039-4a70-a059-919c34ff4bfc",
       "614b2e65-56ac-4f8d-bb9c-d1a14167ba25",
@@ -589,6 +589,15 @@ private
       document["attribute"] = context_phrases[document["document_type"]]
 
       document
+    end
+  end
+
+  def format_parts(parts, slug)
+    parts.map do |part|
+      part["body"] = part["body"].gsub("h2", "h3")
+      part["body"] = part["body"].gsub("#{slug}/", "#")
+
+      part
     end
   end
 end
