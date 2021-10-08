@@ -57,6 +57,11 @@ class BrowseController < ApplicationController
     payload = {
       title: content_item["title"],
       contents_list: contents_list_from_headings_with_ids(details),
+      is_consultation: content_item["schema_name"] == "consultation",
+      opening_date_time: content_item.dig("details", "opening_date"),
+      opening_date_time_display: display_date_and_time(content_item.dig("details", "opening_date")),
+      closing_date_time: content_item.dig("details", "closing_date"),
+      closing_date_time_display: display_date_and_time(content_item.dig("details", "closing_date"), rollback_midnight: true),
       intro: content_item.dig("details", "introduction"),
       details: details,
       documents: content_item.dig("details", "documents"),
@@ -461,6 +466,22 @@ private
 
   def display_date(timestamp)
     I18n.l(Time.zone.parse(timestamp), format: "%-d %B %Y", locale: "en")
+  end
+
+  def display_date_and_time(timestamp, rollback_midnight: false)
+    return false unless timestamp.present?
+    
+    time = Time.zone.parse(timestamp)
+    date_format = "%-e %B %Y"
+    time_format = "%l:%M%P"
+
+    if rollback_midnight && (time.strftime(time_format) == "12:00am")
+      # 12am, 12:00am and "midnight on" can all be misinterpreted
+      # Use 11:59pm on the day before to remove ambiguity
+      # 12am on 10 January becomes 11:59pm on 9 January
+      time -= 1.second
+    end
+    I18n.l(time, format: "#{time_format} on #{date_format}").gsub(":00", "").gsub("12pm", "midday").gsub("12am on ", "").strip
   end
 
   def any_updates?(content_item)
