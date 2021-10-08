@@ -72,7 +72,7 @@ module Taxonomies
         "/browse/births-deaths-marriages/marriage-divorce" => "life-circumstances/marriage-divorce",
 
         # Business and self employed
-        "/browse/business/" => "business-and-industry",
+        "/browse/business" => "business-and-industry",
         #        "/browse/business/setting-up" => "", # no match
         "/browse/business/business-tax" => "money/business-tax",
         "/browse/business/finance-support" => "business/finance-support",
@@ -128,7 +128,7 @@ module Taxonomies
         "/browse/disabilities/work" => "employment/work",
 
         # Driving and transport
-        "/browse/driving/" => "transport",
+        "/browse/driving" => "transport",
         "/browse/driving/driving-licences" => "transport/driving-licences",
         "/browse/driving/vehicle-tax-mot-insurance" => "transport/vehicle-ownership-approval-and-standards",
         "/browse/driving/learning-to-drive" => "transport/driving-and-motorcycle-tests", # Multiple
@@ -178,7 +178,7 @@ module Taxonomies
         "/browse/environment-countryside/wildlife-biodiversity" => "environment/wildlife-animals-biodiversity-and-ecosystems",
 
         # Housing and local services
-        "/browse/housing-local-services/" => "housing-local-and-community",
+        "/browse/housing-local-services" => "housing-local-and-community",
         "/browse/housing-local-services/landlords" => "housing-local-and-community/landlords",
         "/browse/housing-local-services/council-housing-association" => "housing-local-and-community/council-housing-association",
         "/browse/housing-local-services/council-tax" => "regional-and-local-government/local-government-council-tax",
