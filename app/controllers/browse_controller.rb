@@ -78,10 +78,11 @@ class BrowseController < ApplicationController
       },
       history: history(content_item),
       topic: content_item.dig("links", "topics", 0),
-      part_of: content_item.dig("links", "part_of_step_navs"),
-      related_content: content_item.dig("links", "ordered_related_items") || content_item.dig("links", "suggested_ordered_related_items"),
-      detailed_guidance: content_item.dig("links", "related_guides"),
-      collections: content_item.dig("links", "document_collections"),
+      related_content: format_related_content((content_item.dig("links", "ordered_related_items") || content_item.dig("links", "suggested_ordered_related_items")), 3, false, content_item.dig("links", "related_guides")),
+      step_by_step: format_related_content(content_item.dig("links", "part_of_step_navs"), false, true),
+      topical_events: format_related_content(content_item.dig("links", "topical_events")),
+      collections: format_related_content(content_item.dig("links", "document_collections")),
+      topics: format_related_content(content_item.dig("links", "topics"), false, true),
     }
 
     if is_html_pub
@@ -623,5 +624,27 @@ private
 
       part
     end
+  end
+
+  def format_related_content(related, limit = false, alphabetise = false, combined_with = false)
+    return [] unless related && related.kind_of?(Array)
+
+    formatted = related
+
+    if limit
+      formatted = formatted.take(limit)
+    end
+
+    if alphabetise
+      formatted = formatted.sort do |a, b|
+        a["title"] <=> b["title"]
+      end
+    end
+
+    if combined_with && combined_with.kind_of?(Array)
+      formatted = formatted.concat(combined_with)
+    end
+
+    formatted
   end
 end
