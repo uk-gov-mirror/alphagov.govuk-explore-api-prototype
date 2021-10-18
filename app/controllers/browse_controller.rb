@@ -244,6 +244,8 @@ private
       payload[:related_topics] = related_topics(content_item)
     end
 
+    payload[:detailed_guidance] = content_item.dig("links", "related_topics")
+
     render json: payload
   end
 
