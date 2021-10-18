@@ -38,7 +38,7 @@ class BrowseController < ApplicationController
   def show_generic_content
     url = "https://www.gov.uk/api/content/#{params[:slug]}"
     content_item = http_get(url).parsed_response
-    details = content_item.dig("details", "body") || format_parts(content_item.dig("details", "parts"), params[:slug])
+    details = content_item.dig("details", "body") || format_parts(content_item.dig("details", "parts"), content_item["base_path"], params[:slug])
     priority_taxons = [
       "634fd193-8039-4a70-a059-919c34ff4bfc",
       "614b2e65-56ac-4f8d-bb9c-d1a14167ba25",
@@ -56,7 +56,7 @@ class BrowseController < ApplicationController
 
     payload = {
       title: content_item["title"],
-      contents_list: contents_list_from_headings_with_ids(details),
+      contents_list: content_item.dig("details", "parts") ? contents_list_from_parts(content_item.dig("details", "parts"), content_item["base_path"], params[:slug]) : contents_list_from_headings_with_ids(details),
       is_consultation: content_item["schema_name"] == "consultation",
       opening_date_time: content_item.dig("details", "opening_date"),
       opening_date_time_display: display_date_and_time(content_item.dig("details", "opening_date")),
@@ -93,6 +93,10 @@ class BrowseController < ApplicationController
     if collection_documents
       payload[:main_document] = collection_documents[0]
       payload[:archived_documents] = collection_documents.drop(1)
+    end
+
+    if content_item["document_type"] == "guide"
+      payload[:is_mainstream_guide] = true
     end
 
     render json: payload
@@ -510,6 +514,21 @@ private
     end
   end
 
+  def contents_list_from_parts(parts, base_path, slug)
+    parts.map do |part|
+      contents_list_item = {
+        text: part["title"],
+      }
+
+      is_active_page = part["slug"] == slug
+
+      contents_list_item[:slug] = is_active_page ? false : "#{base_path}/#{part["slug"]}"
+      contents_list_item[:is_current_page] = is_active_page
+
+      contents_list_item
+    end
+  end
+
   def history(content_item)
     return [] unless any_updates?(content_item)
 
@@ -617,11 +636,17 @@ private
     end
   end
 
-  def format_parts(parts, slug)
-    parts.map do |part|
-      part["body"] = part["body"].gsub("h2", "h3")
-      part["body"] = part["body"].gsub("#{slug}/", "#")
+  def format_parts(parts, base_path, slug)
+    stripped_slug = slug.gsub(base_path, "").gsub("/", "")
+    filter = stripped_slug.empty? ? "overview": stripped_slug
+    correct_part = parts.filter do |part|
+      part["slug"] == filter
+    end
 
+    puts stripped_slug
+
+    correct_part.map do |part|
+      part["slug"] = "#{base_path}/#{part["slug"]}"
       part
     end
   end
