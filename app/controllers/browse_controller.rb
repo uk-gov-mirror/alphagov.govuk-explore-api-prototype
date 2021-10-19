@@ -517,12 +517,12 @@ private
   end
 
   def contents_list_from_parts(parts, base_path, slug)
-    parts.map do |part|
+    parts.each_with_index.map do |part, i|
       contents_list_item = {
         text: part["title"],
       }
 
-      is_active_page = (part["slug"] == slug || (base_path == slug && part["slug"] == "#{base_path}/overview"))
+      is_active_page = (part["slug"] == slug || (base_path == slug && i == 0))
 
       contents_list_item[:slug] = is_active_page ? false : "#{base_path}/#{part["slug"]}"
       contents_list_item[:is_current_page] = is_active_page
@@ -640,7 +640,7 @@ private
 
   def format_parts(parts, base_path, slug)
     stripped_slug = slug.gsub(base_path, "").gsub("/", "")
-    filter = stripped_slug.empty? ? "overview": stripped_slug
+    filter = stripped_slug.empty? ? parts[0]["slug"]: stripped_slug
     correct_part = parts.filter do |part|
       part["slug"] == filter
     end
