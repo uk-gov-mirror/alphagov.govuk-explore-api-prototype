@@ -522,7 +522,7 @@ private
         text: part["title"],
       }
 
-      is_active_page = part["slug"] == slug
+      is_active_page = (part["slug"] == slug || (base_path == slug && part["slug"] == "#{base_path}/overview"))
 
       contents_list_item[:slug] = is_active_page ? false : "#{base_path}/#{part["slug"]}"
       contents_list_item[:is_current_page] = is_active_page
