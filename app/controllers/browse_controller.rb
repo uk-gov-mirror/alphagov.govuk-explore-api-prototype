@@ -38,7 +38,7 @@ class BrowseController < ApplicationController
   def show_generic_content
     url = "https://www.gov.uk/api/content/#{params[:slug]}"
     content_item = http_get(url).parsed_response
-    details = content_item.dig("details", "body") || format_parts(content_item.dig("details", "parts"), content_item["base_path"], params[:slug])
+    details = content_item.dig("details", "body")
     priority_taxons = [
       "634fd193-8039-4a70-a059-919c34ff4bfc",
       "614b2e65-56ac-4f8d-bb9c-d1a14167ba25",
@@ -53,6 +53,10 @@ class BrowseController < ApplicationController
     end
     is_html_pub = params[:htmlpub] == "true"
     collection_documents = content_item["document_type"] == "document_collection" && format_collection_documents(content_item.dig("links", "documents"))
+
+    if !details && content_item.dig("details", "parts")
+      details = format_parts(content_item.dig("details", "parts"), content_item["base_path"], params[:slug])
+    end
 
     payload = {
       title: content_item["title"],
