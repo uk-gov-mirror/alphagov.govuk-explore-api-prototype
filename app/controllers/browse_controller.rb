@@ -52,7 +52,6 @@ class BrowseController < ApplicationController
       priority_taxons.include?(taxon["content_id"])
     end
     is_html_pub = params[:htmlpub] == "true"
-    collection_documents = content_item["document_type"] == "document_collection" && format_collection_documents(content_item.dig("links", "documents"))
 
     if !details && content_item.dig("details", "parts")
       details = format_parts(content_item.dig("details", "parts"), content_item["base_path"], params[:slug])
@@ -94,12 +93,11 @@ class BrowseController < ApplicationController
       payload[:context] = context_phrases[payload[:part_of_parent]["document_type"]]
     end
 
-    if collection_documents
-      payload[:main_document] = collection_documents[0]
-      payload[:archived_documents] = collection_documents.drop(1)
+    if content_item["schema_name"] == "document_collection"
+      payload[:document_collections] = format_collection_documents(content_item.dig("links", "documents"), content_item.dig("details", "collection_groups"))
     end
 
-    if content_item["document_type"] == "guide"
+    if content_item["schema_name"] == "guide"
       payload[:is_mainstream_guide] = true
     end
 
@@ -631,15 +629,44 @@ private
     }
   end
 
-  def format_collection_documents(documents)
-    return [] unless documents.present?
+  def format_collection_documents(documents, groupings)
+    return [] unless documents.present? && groupings.present?
 
-    documents.map do |document|
-      document["formatted_date"] = display_date(document["public_updated_at"])
-      document["attribute"] = context_phrases[document["document_type"]]
+    filtered_groups = []
 
-      document
+    groupings.each do |group|
+      unless group["documents"].empty?
+        filtered_group = {
+          title: group["title"],
+          slug: group["title"].gsub(" ", "-").downcase,
+          body: group["body"],
+        }
+
+        filtered_documents = []
+
+        group["documents"].each do |doc_id|
+          selected_doc = documents.filter do |document|
+            document["content_id"] == doc_id
+          end
+          
+          if selected_doc.present?
+            selected_doc = selected_doc[0]
+            selected_doc["formatted_date"] = display_date(selected_doc["public_updated_at"])
+            selected_doc["attribute"] = context_phrases[selected_doc["document_type"]]
+
+            filtered_documents << selected_doc
+          end
+        end
+
+        filtered_group[:documents] = filtered_documents
+
+        unless filtered_documents.empty?
+          filtered_groups << filtered_group
+        end
+      end
     end
+
+    filtered_groups
   end
 
   def format_parts(parts, base_path, slug)
@@ -648,8 +675,6 @@ private
     correct_part = parts.filter do |part|
       part["slug"] == filter
     end
-
-    puts stripped_slug
 
     correct_part.map do |part|
       part["slug"] = "#{base_path}/#{part["slug"]}"
