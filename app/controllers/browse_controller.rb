@@ -435,20 +435,18 @@ private
   end
 
   def breadcrumb_content(content_item, is_html_pub = false)
-    return false if !content_item
+    return [] if !content_item
 
     if is_html_pub
-      breadcrumbs = []
       parent_content_item = http_get("https://www.gov.uk#{content_item.dig("links", "parent", 0, "api_path")}").parsed_response
-
       breadcrumb_content(parent_content_item)
     else
       if content_item.dig("links", "parent")
         breadcrumbs_by_parent(content_item.dig("links", "parent", 0))
       elsif content_item.dig("links", "topics")
         content_item.dig("links", "topics")
-      elsif content_item.dig("links", "taxons")
-        breadcrumbs_by_taxon(content_item.dig("links", "taxons", 0))
+      else
+        []
       end
     end
   end
@@ -459,17 +457,6 @@ private
 
     if potential_parent
       (breadcrumbs << breadcrumbs_by_parent(potential_parent)).flatten!
-    else
-      breadcrumbs
-    end
-  end
-
-  def breadcrumbs_by_taxon(taxon)
-    breadcrumbs = [taxon]
-    potential_parent_taxon = taxon.dig("links", "parent_taxons", 0)
-
-    if potential_parent_taxon
-      (breadcrumbs << breadcrumbs_by_taxon(potential_parent_taxon)).flatten!
     else
       breadcrumbs
     end
