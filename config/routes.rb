@@ -6,5 +6,5 @@ Rails.application.routes.draw do
   get "/topic", to: "browse#show_topics"
   get "/topic/:topic_slug", to: "browse#show_specialist_topic"
   get "/topic/:topic_slug/:subtopic_slug", to: "browse#show_specialist_subtopic"
-  get "/generic", to: "browse#show_generic_content"
+  get "/generic", to: "generic_content#show"
 end
