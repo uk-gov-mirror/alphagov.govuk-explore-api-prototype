@@ -32,7 +32,7 @@ class GenericContentController < ApplicationController
       closing_date_time: content_item.dig("details", "closing_date"),
       closing_date_time_display: display_date_and_time(content_item.dig("details", "closing_date"), rollback_midnight: true),
       intro: content_item.dig("details", "introduction"),
-      details: details,
+      details: strip_govuk_links(details),
       documents: content_item.dig("details", "documents"),
       show_form: content_item["schema_name"] == "local_transaction",
       need_to_know: content_item.dig("details", "need_to_know"),
@@ -332,5 +332,16 @@ private
     end
 
     formatted
+  end
+
+  def strip_govuk_links(details)
+    if details.kind_of?(Array)
+      details.map do |item|
+        item["body"] = strip_govuk_links(item["body"])
+        item
+      end
+    else
+      details.gsub(/(https?:\/\/(www\.)?gov\.uk(\/)?)/, "/")
+    end
   end
 end
